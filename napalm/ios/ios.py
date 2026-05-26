@@ -2296,6 +2296,8 @@ class IOSDriver(NetworkDriver):
         cpu_cmd = "show proc cpu"
         mem_cmd = "show memory statistics"
         temp_cmd = "show env temperature status"
+        power_cmd = "show env power"
+        fan_cmd = "show env fan"
 
         output = self._send_command(cpu_cmd)
         environment.setdefault("cpu", {})
@@ -2359,6 +2361,12 @@ class IOSDriver(NetworkDriver):
             env_value = {"is_alert": False, "is_critical": False, "temperature": -1.0}
             environment["temperature"]["invalid"] = env_value
 
+        #show environment power
+        #SW  PID                 Serial#     Status           Sys Pwr  PoE Pwr  Watts
+        #--  ------------------  ----------  ---------------  -------  -------  -----
+        #1A  PWR-C1-1100WAC      LIT21334H2T  OK              Good    Good     1100
+        #1B  Not Present
+
         # Initialize 'power' and 'fan' to default values (not implemented)
         environment.setdefault("power", {})
         environment["power"]["invalid"] = {
@@ -2366,8 +2374,22 @@ class IOSDriver(NetworkDriver):
             "output": -1.0,
             "capacity": -1.0,
         }
+
         environment.setdefault("fans", {})
-        environment["fans"]["invalid"] = {"status": True}
+        re_fan_value = re.compile("(.*) is (.*)")
+        output = self._send_command(fan_cmd)
+        if "% Invalid" not in output and "Not Supported" not in output:
+            for line in output.splitlines():
+                m = re_fan_value.match(line)
+                if m is not None:
+                    fan_name = m.group(1)
+                    fan_value = m.group(2)
+                    if fan_value == "OK":
+                        environment["fans"][fan_name] = {"status": True, "is_alert": False, "is_critical": False}
+                    elif fan_value == "NOT PRESENT":
+                        environment["fans"][fan_name] = {"status": False, "is_alert": False, "is_critical": False}
+                    else:
+                        environment["fans"][fan_name] = {"status": False, "is_alert": True, "is_critical": True}
 
         return environment
 
