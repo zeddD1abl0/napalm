@@ -2369,11 +2369,26 @@ class IOSDriver(NetworkDriver):
 
         # Initialize 'power' and 'fan' to default values (not implemented)
         environment.setdefault("power", {})
-        environment["power"]["invalid"] = {
-            "status": True,
-            "output": -1.0,
-            "capacity": -1.0,
-        }
+        output = self._send_command(power_cmd)
+        if "% Invalid" not in output and "Not Supported" not in output:
+            for line in output.splitlines():
+                if "PWR-" in line:
+                    psu, _, _, status, _, _, capacity = line.split()
+                    stat_val = True if status == "OK" else False
+                    environment["power"][psu] = {
+                        "status": stat_val,
+                        "is_alert": not stat_val,
+                        "is_critical": not stat_Val,
+                        "output": -1.0,
+                        "capacity": float(capacity),
+                    }
+                if "Not Present" in line:
+                    psu, _, _ = line.split()
+                    environment["power"][psu] = {
+                        "status": False,
+                        "output": -1.0,
+                        "capacity": -1.0,
+                    }
 
         environment.setdefault("fans", {})
         re_fan_value = re.compile("(.*) is (.*)")
