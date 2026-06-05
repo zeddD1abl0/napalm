@@ -2378,7 +2378,7 @@ class IOSDriver(NetworkDriver):
                     environment["power"][psu] = {
                         "status": stat_val,
                         "is_alert": not stat_val,
-                        "is_critical": not stat_Val,
+                        "is_critical": not stat_val,
                         "output": -1.0,
                         "capacity": float(capacity),
                     }
